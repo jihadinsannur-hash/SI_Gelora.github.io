@@ -1,0 +1,1 @@
+{"type":"FeatureCollection","features":[{"type":"Feature","id":1,"geometry":{"type":"Point","coordinates":[105.17166965547852,-6.1733372072898192]},"properties":{"OBJECTID":1,"Id":2,"gridcode":1,"ORIG_FID":2}},{"type":"Feature","id":2,"geometry":{"type":"Point","coordinates":[105.50000300737162,-6.250003878290272]},"properties":{"OBJECTID":2,"Id":3,"gridcode":2,"ORIG_FID":3}}]}
