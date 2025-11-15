@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peta AOI ZPI - Leaflet</title>
+
+  <!-- Leaflet CSS -->
+  <link 
+    rel="stylesheet" 
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+    crossorigin=""
+  />
+
+  <!-- Leaflet JS -->
+  <script 
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
+    crossorigin="">
+  </script>
+
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #map { width: 100%; height: 100vh; }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- File GeoJSON kamu -->
+<script src="AOI-ZPPI.js"></script>
+
+<script>
+  // Pastikan variabel ZPI sudah dideklarasikan di AOI-ZPPI.js
+  console.log(ZPI); // Debugging: lihat di console kalau terbaca
+
+  // 1️⃣ Inisialisasi peta (zoom keluar dulu biar area besar kelihatan)
+  const map = L.map('map').setView([-5.5, 106], 6);
+
+  // 2️⃣ Tambahkan layer dasar
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(map);
+
+  // 3️⃣ Tampilkan GeoJSON
+  const layerGeoJson = L.geoJSON(ZPI, {
+    style: function(feature) {
+      let color;
+      switch (feature.properties.gridcode) {
+        case 2: color = 'red'; break;
+        case 3: color = 'green'; break;
+        case 4: color = 'blue'; break;
+        default: color = 'orange'; // biar tetap kelihatan
+      }
+      return { color: color, weight: 1, fillOpacity: 0.4 };
+    },
+    onEachFeature: function(feature, layer) {
+      const id = feature.properties.Id ?? feature.properties.FID ?? "N/A";
+      const gridcode = feature.properties.gridcode ?? "N/A";
+      layer.bindPopup(`ID: ${id}<br>Gridcode: ${gridcode}`);
+    }
+  }).addTo(map);
+
+  // 4️⃣ Pastikan peta fit ke data
+  map.fitBounds(layerGeoJson.getBounds());
+</script>
+
+</body>
+</html>

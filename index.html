@@ -1,0 +1,2399 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>SI-GELORA - Sistem Informasi Gelombang, Laut, Oseanografi, dan Rantai Perikanan</title>
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <!-- Chart.js untuk grafik -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{
+      --navy:#0b3d91;
+      --sea:#2f86c6;
+      --light:#f6fbff;
+      --card:#ffffff;
+      --muted:#6b7280;
+      --success:#10b981;
+      --warning:#f59e0b;
+      --error:#ef4444;
+      --border:#e5e7eb;
+      --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;background:linear-gradient(180deg,#eaf4ff 0%,#f8fcff 100%);color:#0b2546;min-height:100vh}
+    
+    /* Header Styles */
+    .header{background:linear-gradient(90deg,var(--navy),var(--sea));color:var(--card);padding:1rem 2rem;box-shadow:0 4px 20px rgba(8,40,80,0.1);position:sticky;top:0;z-index:1000}
+    .header-content{max-width:1400px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+    .logo-section{display:flex;align-items:center;gap:1rem}
+    .logo{width:60px;height:60px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;box-shadow:0 4px 12px rgba(0,0,0,0.1)}
+    .logo img{width:50px;height:50px;object-fit:contain;border-radius:8px}
+    .title h1{margin:0;font-size:1.5rem;font-weight:700}
+    .title p{margin:0;font-size:0.9rem;opacity:0.9}
+    
+    /* Navigation */
+    .nav{display:flex;gap:0.5rem;background:rgba(255,255,255,0.1);padding:0.25rem;border-radius:12px}
+    .nav button{border:0;background:transparent;color:var(--card);padding:0.75rem 1.25rem;border-radius:8px;cursor:pointer;font-weight:600;transition:all 0.3s ease;font-size:0.9rem}
+    .nav button:hover{background:rgba(255,255,255,0.2);transform:translateY(-1px)}
+    .nav button.active{background:var(--card);color:var(--navy);box-shadow:0 4px 12px rgba(255,255,255,0.2)}
+    
+    /* Main Container */
+    .container{max-width:1400px;margin:0 auto;padding:2rem}
+    
+    /* Content Sections */
+    .content-section{display:none}
+    .content-section.active{display:block}
+    
+    /* Cards */
+    .card{background:var(--card);border-radius:16px;box-shadow:0 8px 32px rgba(11,61,145,0.08);border:1px solid rgba(11,61,145,0.05);padding:1.5rem;transition:all 0.3s ease}
+    .card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(11,61,145,0.12)}
+    .card-header{margin-bottom:1.5rem}
+    .card-title{font-size:1.25rem;font-weight:700;color:var(--navy);margin-bottom:0.5rem}
+    .card-subtitle{color:var(--muted);font-size:0.9rem}
+    
+    /* Grid Layouts */
+    .grid-1-3{display:grid;grid-template-columns:1fr;gap:1.5rem}
+    .grid-1-2{display:grid;grid-template-columns:1fr;gap:1.5rem}
+    .grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem}
+    .grid-4{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem}
+    
+    @media (min-width:768px){
+      .grid-1-3{grid-template-columns:1fr 2fr}
+      .grid-1-2{grid-template-columns:1fr 1fr}
+    }
+    
+    @media (min-width:1024px){
+      .grid-1-3{grid-template-columns:300px 1fr}
+    }
+    
+    /* Map Container */
+    .map-container{position:relative;border-radius:16px;overflow:hidden;background:var(--card);box-shadow:0 8px 32px rgba(11,61,145,0.08);border:1px solid rgba(11,61,145,0.05)}
+    #map{width:100%;height:600px;border-radius:16px}
+    .map-legend{position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.95);backdrop-filter:blur(10px);padding:1.5rem;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.1);z-index:1000;min-width:320px;max-width:400px}
+    
+    /* Tabs */
+    .tabs{display:flex;gap:0.5rem;background:var(--light);padding:0.5rem;border-radius:12px;margin-bottom:1.5rem}
+    .tab{flex:1;padding:0.75rem 1rem;border:none;background:transparent;border-radius:8px;cursor:pointer;font-weight:600;transition:all 0.3s ease;font-size:0.9rem;text-align:center}
+    .tab:hover{background:rgba(11,61,145,0.1)}
+    .tab.active{background:var(--sea);color:white;box-shadow:0 4px 12px rgba(44,134,198,0.3)}
+    
+    /* Fish Cards */
+    .fish-card{background:var(--card);border-radius:12px;padding:1.5rem;margin-bottom:1rem;border:1px solid var(--border);transition:all 0.3s ease}
+    .fish-card:hover{transform:translateX(4px);box-shadow:0 4px 20px rgba(11,61,145,0.08)}
+    .fish-name{font-size:1.1rem;font-weight:700;color:var(--navy);margin-bottom:0.25rem}
+    .fish-scientific{color:var(--muted);font-style:italic;margin-bottom:0.75rem}
+    .fish-family{display:inline-block;background:var(--light);color:var(--navy);padding:0.25rem 0.75rem;border-radius:20px;font-size:0.8rem;font-weight:600;margin-bottom:1rem}
+    .fish-params{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem}
+    .param{display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid var(--border)}
+    .param:last-child{border-bottom:none}
+    .param-label{font-weight:600;color:var(--navy);font-size:0.9rem}
+    .param-value{color:var(--muted);font-size:0.9rem}
+    
+    /* Alerts */
+    .alert{padding:1rem;border-radius:12px;margin-bottom:1rem;border-left:4px solid}
+    .alert-info{background:#dbeafe;border-color:#3b82f6;color:#1e40af}
+    .alert-warning{background:#fef3c7;border-color:#f59e0b;color:#92400e}
+    .alert-error{background:#fee2e2;border-color:#ef4444;color:#991b1b}
+    .alert-success{background:#d1fae5;border-color:#10b981;color:#065f46}
+    .alert-title{font-weight:700;margin-bottom:0.5rem;font-size:1rem}
+    .alert-text{font-size:0.9rem;line-height:1.5}
+    
+    /* Stats Cards */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;margin-bottom:2rem}
+    .stat-card{background:var(--card);border-radius:12px;padding:1.5rem;text-align:center;border:1px solid var(--border);transition:all 0.3s ease}
+    .stat-card:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(11,61,145,0.08)}
+    .stat-icon{font-size:2rem;margin-bottom:0.5rem}
+    .stat-value{font-size:2rem;font-weight:700;color:var(--sea);margin-bottom:0.25rem}
+    .stat-label{color:var(--muted);font-size:0.9rem}
+    .stat-change{font-size:0.8rem;margin-top:0.5rem}
+    .stat-up{color:var(--success)}
+    .stat-down{color:var(--error)}
+    
+    /* Tables */
+    .table-container{overflow-x:auto;border-radius:12px;box-shadow:0 4px 20px rgba(11,61,145,0.05)}
+    .data-table{width:100%;background:var(--card);border-collapse:collapse;font-size:0.9rem}
+    .data-table th{background:linear-gradient(135deg,var(--navy),var(--sea));color:white;padding:1rem;text-align:left;font-weight:600}
+    .data-table td{padding:0.75rem 1rem;border-bottom:1px solid var(--border)}
+    .data-table tr:hover{background:var(--light)}
+    .data-table tr:last-child td{border-bottom:none}
+    
+    /* Charts */
+    .chart-container{background:var(--card);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(11,61,145,0.05)}
+    .chart-title{font-size:1.1rem;font-weight:700;color:var(--navy);margin-bottom:1rem}
+    
+    /* Footer */
+    .footer{background:var(--navy);color:var(--card);padding:2rem;text-align:center;margin-top:3rem}
+    .footer-content{max-width:1400px;margin:0 auto}
+    
+    /* Responsive */
+    @media (max-width:768px){
+      .header{padding:1rem}
+      .header-content{flex-direction:column;gap:1rem}
+      .nav{flex-wrap:justify-content:center}
+      .container{padding:1rem}
+      .map-legend{position:relative;top:auto;right:auto;margin-top:1rem;min-width:auto}
+      #map{height:400px}
+    }
+    
+    /* Loading Animation */
+    .loading{text-align:center;padding:3rem}
+    .spinner{width:50px;height:50px;border:4px solid var(--light);border-top:4px solid var(--sea);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 1rem}
+    @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+    
+    /* Buttons */
+    .btn{padding:0.75rem 1.5rem;border:none;border-radius:8px;font-weight:600;cursor:pointer;transition:all 0.3s ease;font-size:0.9rem}
+    .btn-primary{background:var(--sea);color:white}
+    .btn-primary:hover{background:var(--navy);transform:translateY(-2px);box-shadow:0 4px 12px rgba(11,61,145,0.3)}
+    .btn-secondary{background:var(--light);color:var(--navy);border:1px solid var(--border)}
+    .btn-secondary:hover{background:var(--border);transform:translateY(-2px)}
+    
+    /* Forms */
+    .form-group{margin-bottom:1.5rem}
+    .form-label{display:block;font-weight:600;color:var(--navy);margin-bottom:0.5rem;font-size:0.9rem}
+    .form-input{width:100%;padding:0.75rem;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;transition:all 0.3s ease}
+    .form-input:focus{outline:none;border-color:var(--sea);box-shadow:0 0 0 3px rgba(44,134,198,0.1)}
+    .form-textarea{resize:vertical;min-height:120px}
+    
+    /* Island Detail Modal */
+    .island-detail{background:var(--card);border-radius:12px;padding:1.5rem;margin-top:1rem;box-shadow:0 4px 20px rgba(11,61,145,0.05)}
+    .island-detail h4{color:var(--navy);margin-bottom:1rem;font-size:1.1rem}
+    .island-info{display:grid;gap:0.75rem}
+    .island-info-row{display:flex;justify-content:space-between;padding:0.5rem;background:var(--light);border-radius:6px}
+    .island-info-label{font-weight:600;color:var(--navy)}
+    .island-info-value{color:var(--muted)}
+    
+    /* Fish Marker Styles */
+    .fish-marker-icon {
+      background: transparent;
+      border: none;
+    }
+
+    .fish-icon-bristletooth, 
+    .fish-icon-rabbitfish,
+    .fish-icon-surgeonfish,
+    .fish-icon-damselfish,
+    .fish-icon-fusilier,
+    .fish-icon-wrasse,
+    .fish-icon-butterflyfish,
+    .fish-icon-snapper {
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      border: 2px solid white;
+    }
+
+    /* Fish Icon Styles */
+    .fish-icon-bristletooth { 
+      background-image: url('https://z-cdn-media.chatglm.cn/files/315f01e7-e233-4557-affc-8eff7fdced89_bristle-tooth_surgeonfish.png?auth_key=1863111966-e182b7145f9f4cd3b16d9029e2eaf19b-0-606e8bfd915e4c1b9aaeedca6635a3ad');
+    }
+
+    .fish-icon-rabbitfish { 
+      background-image: url('https://z-cdn-media.chatglm.cn/files/0ac18eb2-adab-4aa5-a1c8-402f9652a030_RabbitFish.png?auth_key=1863111966-192f79b5d757446a9f2a070d20ba5172-0-06c9edfea4e950b08ad0159bfe9062cb');
+    }
+
+    .fish-icon-surgeonfish { 
+      background-image: url('https://z-cdn-media.chatglm.cn/files/61691bbd-b011-4870-a6f7-1bc32de16c41_SurgeonFish.png?auth_key=1863111966-d3ab49bd234748f38bc43a579e83445f-0-5ee2bca52a0c1f8a5af3e12f0438d19d');
+    }
+
+    .fish-icon-damselfish { 
+      background-image: url('https://z-cdn-media.chatglm.cn/files/33b4c505-df0f-4924-ac1b-1a4305ba4d24_DamselFish.png?auth_key=1863111966-5f4e7287c68e4869a440dffffe3d4315-0-e16dde37d6725b9e79602a30016145ac');
+    }
+
+    .fish-icon-fusilier { 
+      background-image: url('https://z-cdn-media.chatglm.cn/files/d9aa25ca-b968-4afe-9024-d0adbc2111a2_Fusilier.png?auth_key=1863111966-a829fa5046554817a5b8ec0c9d494eda-0-d95da114608c3d40a078af0e4eaf9c7e');
+    }
+
+    .fish-icon-wrasse { 
+      background-image: url('https://z-cdn-media.chatglm.cn/files/51482c71-7e6f-4481-8a07-66520de85a16_Wrasse.png?auth_key=1863111966-90456fe3d30442c78b41e8738baffbf0-0-bc4a1980ec41e763e1198e65e0b535d9');
+    }
+
+    .fish-icon-butterflyfish { 
+      background-image: url('https://z-cdn-media.chatglm.cn/files/1bb9e33c-e222-42f8-ba3b-63ee99a7b6f2_ButterflyFish.png?auth_key=1863111966-f01740423d9040b0a58603141dd0b94b-0-3be5fa71162823c0b7c8d3998e5e8e54');
+    }
+
+    .fish-icon-snapper { 
+      background-image: url('https://z-cdn-media.chatglm.cn/files/f8447118-0f1d-4636-ba74-1bcd2cfc838b_Snapper.png?auth_key=1863111966-280af495ecb54c21ad373da0ffd5592f-0-3a678ee2364051856a4777dd31bad52d');
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <div class="logo-section">
+        <div class="logo">
+          <img src="c:\Users\Insan Nur Jihad\Downloads\LOGO.png" alt="Logo SI-GELORA">
+        </div>
+        <div class="title">
+          <h1>SI-GELORA</h1>
+          <p>Sistem Informasi Gelombang, Laut, Oseanografi, dan Rantai Perikanan</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="nav-btn active" onclick="setActive('home')">🏠 Beranda</button>
+        <button class="nav-btn" onclick="setActive('zonaTangkapan')">🐟 Zona Penangkapan</button>
+        <button class="nav-btn" onclick="setActive('oseanografi')">🌊 Parameter Oseanografi</button>
+        <button class="nav-btn" onclick="setActive('about')">ℹ️ About</button>
+        <button class="nav-btn" onclick="setActive('feedback')">💬 Kritik & Saran</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container">
+    <!-- Home Section -->
+    <section id="home" class="content-section active">
+      <div class="grid-1-2">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Selamat Datang di SI-GELORA</h2>
+            <p class="card-subtitle">Sistem Informasi Gelombang, Laut, Oseanografi, dan Rantai Perikanan</p>
+          </div>
+          <div class="card-content">
+            <p style="line-height:1.6;margin-bottom:1.5rem">
+              <strong>SI-GELORA</strong> adalah platform informasi terintegrasi yang dikembangkan untuk mendukung 
+              pengelolaan dan pemanfaatan sumber daya perikanan secara berkelanjutan di wilayah Selat Sunda. 
+              Sistem ini menyediakan data dan informasi terkini mengenai kondisi oseanografi serta zona penangkapan 
+              ikan yang dapat diakses oleh nelayan, stakeholder perikanan, dan masyarakat umum.
+            </p>
+            
+            <h3 style="color:var(--navy);margin-bottom:0.75rem">🎯 Misi & Tujuan</h3>
+            <ul style="line-height:1.8;list-style:none;margin-bottom:1.5rem">
+              <li>🌊 <strong>Monitoring Oseanografi:</strong> Memantau kondisi laut secara real-time untuk mendukung aktivitas perikanan</li>
+              <li>🐟 <strong>Optimasi Penangkapan:</strong> Mengidentifikasi zona penangkapan ikan berdasarkan data ilmiah</li>
+              <li>📊 <strong>Pengambilan Keputusan:</strong> Menyediakan data pendukung untuk kebijakan pengelolaan perikanan</li>
+              <li>🌱 <strong>Keberlanjutan:</strong> Mendorong praktik perikanan yang berkelanjutan dan ramah lingkungan</li>
+            </ul>
+            
+            <h3 style="color:var(--navy);margin-bottom:0.75rem">👥 Pemanfaat</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+              <div style="background:var(--light);border-radius:8px;padding:1rem">
+                <strong>Nelayan</strong><br>
+                <span style="font-size:0.9rem;color:var(--muted)">Informasi zona penangkapan ikan</span>
+              </div>
+              <div style="background:var(--light);border-radius:8px;padding:1rem">
+                <strong>Pemerintah</strong><br>
+                <span style="font-size:0.9rem;color:var(--muted)">Data pendukung kebijakan</span>
+              </div>
+              <div style="background:var(--light);border-radius:8px;padding:1rem">
+                <strong>Peneliti</strong><br>
+                <span style="font-size:0.9rem;color:var(--muted)">Data oseanografi untuk penelitian</span>
+              </div>
+              <div style="background:var(--light);border-radius:8px;padding:1rem">
+                <strong>Masyarakat</strong><br>
+                <span style="font-size:0.9rem;color:var(--muted)">Edukasi kelautan dan perikanan</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Area of Interest (AOI)</h2>
+            <p class="card-subtitle">Seluruh wilayah Selat Sunda</p>
+          </div>
+          <div class="card-content">
+            <div style="background:var(--light);border-radius:8px;padding:1rem;margin-bottom:1rem">
+              <h4 style="color:var(--navy);margin-bottom:0.5rem">🗺️ Area Coverage</h4>
+              <p style="line-height:1.6;margin-bottom:1rem">
+                <strong>Selat Sunda</strong> - Seluruh wilayah perairan antara Pulau Sumatera dan Pulau Jawa, 
+                mencakup area perikanan strategis dengan total luas ± 25.000 km².
+              </p>
+              <div style="background:white;border-radius:6px;padding:0.75rem">
+                <strong>📍 Koordinat AOI:</strong><br>
+                Barat: 105.0°E - Timur: 106.5°E<br>
+                Utara: -5.5°S - Selatan: -6.5°S
+              </div>
+            </div>
+            <div style="background:var(--light);border-radius:8px;padding:1rem">
+              <h4 style="color:var(--navy);margin-bottom:0.5rem">🏝️ Sumber Data Ikan</h4>
+              <p style="line-height:1.6;font-size:0.9rem">
+                Data persebaran ikan dikumpulkan dari <strong>3 pulau monitoring</strong> sebagai representatif 
+                untuk seluruh AOI Selat Sunda:
+              </p>
+              <div style="display:grid;gap:0.5rem;margin-top:0.75rem">
+                <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem;background:white;border-radius:6px">
+                  <span>📍</span>
+                  <span><strong>Pulau Sangiang:</strong> -5.953°, 105.850°</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem;background:white;border-radius:6px">
+                  <span>📍</span>
+                  <span><strong>Pulau Tunda:</strong> -5.812°, 106.283°</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem;background:white;border-radius:6px">
+                  <span>📍</span>
+                  <span><strong>Pulau Panjang:</strong> -5.933°, 106.153°</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Features Section -->
+      <div class="grid-3" style="margin-top:2rem">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">🐟 Zona Penangkapan Ikan</h3>
+          </div>
+          <div class="card-content">
+            <p style="line-height:1.6">
+              Informasi persebaran ikan berdasarkan musim dan periode oseanografi. 
+              Data dikumpulkan dari tiga pulau monitoring di Selat Sunda untuk memberikan 
+              rekomendasi zona penangkapan yang optimal.
+            </p>
+            <button onclick="setActive('zonaTangkapan')" class="btn btn-primary" style="margin-top:1rem">
+              Jelajahi Zona Penangkapan
+            </button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">🌊 Parameter Oseanografi</h3>
+          </div>
+          <div class="card-content">
+            <p style="line-height:1.6">
+              Monitoring real-time parameter oseanografi seperti suhu permukaan laut, 
+              salinitas, klorofil-a, dan arus laut. Data ini digunakan untuk analisis 
+              kondisi perairan dan prediksi produktivitas perikanan.
+            </p>
+            <button onclick="setActive('oseanografi')" class="btn btn-primary" style="margin-top:1rem">
+              Lihat Data Oseanografi
+            </button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">📊 Analisis Data</h3>
+          </div>
+          <div class="card-content">
+            <p style="line-height:1.6">
+              Grafik dan tabel data klimat maritim untuk analisis tren kondisi perairan. 
+              Menyediakan informasi historis dan prediksi untuk mendukung pengambilan 
+              keputusan yang berbasis data.
+            </p>
+            <button onclick="setActive('oseanografi')" class="btn btn-primary" style="margin-top:1rem">
+              Lihat Analisis Data
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Zona Penangkapan Ikan Section -->
+    <section id="zonaTangkapan" class="content-section">
+      <div class="map-container">
+        <div id="map"></div>
+        <div class="map-legend">
+          <h3 style="margin:0 0 1rem 0;color:var(--navy);font-size:1.1rem">Filter Zona Penangkapan</h3>
+          
+          <!-- Island Selection -->
+          <div class="form-group">
+            <label class="form-label">🏝️ Pilih Pulau (Sumber Data):</label>
+            <div class="tabs">
+              <button class="tab active" onclick="selectIsland('sangiang')">Sangiang</button>
+              <button class="tab" onclick="selectIsland('tunda')">Tunda</button>
+              <button class="tab" onclick="selectIsland('panjang')">Panjang</button>
+            </div>
+          </div>
+
+          <!-- Period Selection -->
+          <div class="form-group">
+            <label class="form-label">📅 Pilih Periode:</label>
+            <div class="tabs">
+              <button class="period-tab active" onclick="selectPeriod('peralihan1')">Peralihan I</button>
+              <button class="period-tab" onclick="selectPeriod('upwelling')">Upwelling</button>
+              <button class="period-tab" onclick="selectPeriod('peralihan2')">Peralihan II</button>
+            </div>
+          </div>
+
+          <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0">
+          
+          <div id="fishInfo" style="margin-bottom:1rem"></div>
+          
+          <div style="background:var(--light);border-radius:8px;padding:1rem">
+            <h4 style="margin:0 0 0.5rem 0;color:var(--navy);font-size:0.9rem">🌊 AOI Selat Sunda</h4>
+            <p style="margin:0;font-size:0.8rem;color:var(--muted)">
+              Monitoring: 25.000 km² | Pulau Data: <span id="currentIslandName">Sangiang</span>
+            </p>
+          </div>
+          
+          <!-- Tombol Tampilkan Ikan -->
+          <div style="margin-top:1rem">
+            <button onclick="toggleFishMarkers()" class="btn btn-primary" style="width:100%">
+              🗺️ Tampilkan Lokasi Ikan
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Fish Details -->
+      <div class="grid-1-3" style="margin-top:2rem">
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">📊 Informasi Monitoring</h3>
+            </div>
+            <div class="card-content">
+              <h4 id="islandTitle" style="color:var(--navy);margin-bottom:0.5rem">Pulau Sangiang</h4>
+              <p id="islandDescription" style="color:var(--muted);font-size:0.9rem;line-height:1.5;margin-bottom:1rem">Pulau di Selat Sunda dengan ekosistem terumbu karang yang kaya</p>
+              <div style="background:var(--light);border-radius:8px;padding:1rem">
+                <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
+                  <span style="font-weight:600">Periode:</span>
+                  <span id="currentPeriod">Peralihan I</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
+                  <span style="font-weight:600">Jumlah Ikan:</span>
+                  <span id="fishCount">3 jenis</span>
+                </div>
+                <div style="display:flex;justify-content:space-between">
+                  <span style="font-weight:600">Status AOI:</span>
+                  <span style="color:var(--success)">Aktif</span>
+                </div>
+              </div>
+              <button onclick="zoomToAOI()" class="btn btn-primary" style="width:100%;margin-top:1rem">
+                🗺️ Lihat Seluruh AOI
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <div id="fishDetails"></div>
+        </div>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="grid-3" style="margin-top:2rem">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">🌊 Peralihan I</h3>
+          </div>
+          <div class="card-content">
+            <p style="line-height:1.6">
+              Periode transisi dengan kondisi oseanografi moderat. Suhu laut stabil dan produktivitas biologi masih tinggi. Beberapa ikan masih dapat ditemukan di area terumbu karang dengan kondisi yang optimal untuk aktivitas penangkapan.
+            </p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">❄️ Upwelling</h3>
+          </div>
+          <div class="card-content">
+            <p style="line-height:1.6">
+              Periode dengan massa air dingin dari kedalaman naik ke permukaan. Penurunan suhu laut secara drastis dan perubahan distribusi nutrien membuat kondisi tidak sesuai untuk ikan tropis. Ikan akan bermigrasi ke perairan yang lebih sesuai.
+            </p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">🌡️ Peralihan II</h3>
+          </div>
+          <div class="card-content">
+            <p style="line-height:1.6">
+              Periode transisi kembali ke kondisi normal. Analisis berdasarkan suhu dan salinitas karena klorofil-a tidak terdeteksi akibat tutupan awan dan gangguan sinyal satelit. Kondisi mulai kembali optimal untuk kehidupan laut.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Parameter Oseanografi Section -->
+    <section id="oseanografi" class="content-section">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">🌊 Parameter Oseanografi Selat Sunda</h2>
+          <p class="card-subtitle">Data real-time dan historis kondisi perairan</p>
+        </div>
+      </div>
+
+      <!-- Current Parameters -->
+      <div class="stats-grid" style="margin:2rem 0">
+        <div class="stat-card">
+          <div class="stat-icon">🌡️</div>
+          <div class="stat-value">28.5°C</div>
+          <div class="stat-label">Suhu Permukaan Laut</div>
+          <div class="stat-change">Range: 27-30°C</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🧂</div>
+          <div class="stat-value">34.2 PSU</div>
+          <div class="stat-label">Salinitas</div>
+          <div class="stat-change">Normal</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🌱</div>
+          <div class="stat-value">1.8 mg/m³</div>
+          <div class="stat-label">Klorofil-a</div>
+          <div class="stat-change stat-up">Produktivitas tinggi</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💨</div>
+          <div class="stat-value">0.45 m/s</div>
+          <div class="stat-label">Kecepatan Arus</div>
+          <div class="stat-change">Arah: Barat Daya</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="grid-1-2" style="margin:2rem 0">
+        <div class="chart-container">
+          <h3 class="chart-title">📈 Tren Suhu Permukaan Laut (6 Bulan Terakhir)</h3>
+          <canvas id="tempChart"></canvas>
+        </div>
+        <div class="chart-container">
+          <h3 class="chart-title">🌱 Konsentrasi Klorofil-a (6 Bulan Terakhir)</h3>
+          <canvas id="chlorophyllChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Climate Data Table -->
+      <div class="card" style="margin:2rem 0">
+        <div class="card-header">
+          <h3 class="card-title">📊 Data Klimat Maritim Selat Sunda</h3>
+          <p class="card-subtitle">Rekapan data dari tiga pulau monitoring</p>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th rowspan="2">Bulan/Tahun</th>
+                <th colspan="2">Pulau Tunda</th>
+                <th colspan="2">Pulau Sangiang</th>
+                <th colspan="2">Pulau Panjang</th>
+              </tr>
+              <tr>
+                <th>Gelombang (m)</th>
+                <th>Suhu (°C)</th>
+                <th>Gelombang (m)</th>
+                <th>Suhu (°C)</th>
+                <th>Gelombang (m)</th>
+                <th>Suhu (°C)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>2025-10</strong></td>
+                <td>0.32</td>
+                <td>29.7</td>
+                <td>0.43</td>
+                <td>29.8</td>
+                <td>0.29</td>
+                <td>30.3</td>
+              </tr>
+              <tr>
+                <td><strong>2025-09</strong></td>
+                <td>0.34</td>
+                <td>29.8</td>
+                <td>0.43</td>
+                <td>29.9</td>
+                <td>0.29</td>
+                <td>29.7</td>
+              </tr>
+              <tr>
+                <td><strong>2025-08</strong></td>
+                <td>0.31</td>
+                <td>29.7</td>
+                <td>0.41</td>
+                <td>29.8</td>
+                <td>0.29</td>
+                <td>29.6</td>
+              </tr>
+              <tr>
+                <td><strong>2025-07</strong></td>
+                <td>0.30</td>
+                <td>29.9</td>
+                <td>0.42</td>
+                <td>29.8</td>
+                <td>0.28</td>
+                <td>30.0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:1rem;padding:1rem;background:var(--light);border-radius:8px">
+          <p style="margin:0;font-size:0.9rem;color:var(--muted)">
+            <strong>Sumber Data:</strong> Data Klimat Maritim 2025, BMKG, dan Direktorat Jenderal Perikanan dan Kelautan
+          </p>
+        </div>
+      </div>
+
+      <!-- Additional Oceanographic Info -->
+      <div class="grid-1-2" style="margin:2rem 0">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">🌊 Gelombang Laut</h3>
+          </div>
+          <div class="card-content">
+            <div style="background:var(--light);border-radius:8px;padding:1rem;margin-bottom:1rem">
+              <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
+                <span>Tinggi Gelombang Rata-rata:</span>
+                <strong>0.32 m</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
+                <span>Tinggi Maksimum:</span>
+                <strong>0.71 m</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between">
+                <span>Periode Dominan:</span>
+                <strong>4-5 detik</strong>
+              </div>
+            </div>
+            <p style="font-size:0.9rem;line-height:1.6;color:var(--muted)">
+              Kondisi gelombang di Selat Sunda umumnya tenang dengan tinggi gelombang rata-rata di bawah 0.5 meter, 
+              yang sangat mendukung aktivitas perikanan tradisional dan transportasi laut.
+            </p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">🌡️ Suhu dan Salinitas</h3>
+          </div>
+          <div class="card-content">
+            <div style="background:var(--light);border-radius:8px;padding:1rem;margin-bottom:1rem">
+              <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
+                <span>Range Suhu Tahunan:</span>
+                <strong>28.0 - 31.3°C</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
+                <span>Salinitas Rata-rata:</span>
+                <strong>34.2 PSU</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between">
+                <span>Termoklin Utama:</span>
+                <strong>50-100 m</strong>
+              </div>
+            </div>
+            <p style="font-size:0.9rem;line-height:1.6;color:var(--muted)">
+              Suhu permukaan laut di Selat Sunda menunjukkan variasi musiman yang dipengaruhi oleh monsun, 
+              dengan suhu lebih tinggi selama periode timur dan lebih rendah selama periode barat.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="content-section">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">ℹ️ About Us - SI-GELORA</h2>
+          <p class="card-subtitle">Tim Pengembang Sistem Informasi Kelautan</p>
+        </div>
+        <div class="card-content">
+          <p style="line-height:1.8;margin-bottom:2rem;font-size:1.1rem">
+            SI-GELORA adalah platform terintegrasi yang menyediakan informasi oseanografi dan zona penangkapan ikan secara real-time 
+            untuk mendukung keberlanjutan sektor perikanan di wilayah Selat Sunda. Sistem ini dikembangkan oleh 
+            <strong>Mahasiswa Sistem Informasi Kelautan UPI Serang</strong> yang beranggotakan 4 orang.
+          </p>
+          
+          <h3 style="color:var(--navy);margin-bottom:1rem">👥 Tim Pengembang</h3>
+          <div class="team-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;margin-bottom:2rem;">
+            <div class="team-member" style="background:var(--light);border-radius:12px;padding:1.5rem;text-align:center;transition:all 0.3s ease;">
+              <div class="member-avatar" style="width:80px;height:80px;border-radius:50%;background:var(--sea);margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;">
+                👤
+              </div>
+              <h4 style="color:var(--navy);margin-bottom:0.5rem;">Insan Nur Jihad</h4>
+              <p style="color:var(--muted);font-size:0.9rem;margin-bottom:0.5rem;">Mahasiswa Sistem Informasi Kelautan</p>
+              <div style="background:white;border-radius:6px;padding:0.5rem;font-size:0.8rem;">
+                <strong>NIM:</strong> 2409091
+              </div>
+            </div>
+            <div class="team-member" style="background:var(--light);border-radius:12px;padding:1.5rem;text-align:center;transition:all 0.3s ease;">
+              <div class="member-avatar" style="width:80px;height:80px;border-radius:50%;background:var(--sea);margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;">
+                👤
+              </div>
+              <h4 style="color:var(--navy);margin-bottom:0.5rem;">Adelia Dwi Rahma</h4>
+              <p style="color:var(--muted);font-size:0.9rem;margin-bottom:0.5rem;">Mahasiswa Sistem Informasi Kelautan</p>
+              <div style="background:white;border-radius:6px;padding:0.5rem;font-size:0.8rem;">
+                <strong>NIM:</strong> 2402785
+              </div>
+            </div>
+            <div class="team-member" style="background:var(--light);border-radius:12px;padding:1.5rem;text-align:center;transition:all 0.3s ease;">
+              <div class="member-avatar" style="width:80px;height:80px;border-radius:50%;background:var(--sea);margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;">
+                👤
+              </div>
+              <h4 style="color:var(--navy);margin-bottom:0.5rem;">Paris Tamaam Abdurrachman</h4>
+              <p style="color:var(--muted);font-size:0.9rem;margin-bottom:0.5rem;">Mahasiswa Sistem Informasi Kelautan</p>
+              <div style="background:white;border-radius:6px;padding:0.5rem;font-size:0.8rem;">
+                <strong>NIM:</strong> 2405120
+              </div>
+            </div>
+            <div class="team-member" style="background:var(--light);border-radius:12px;padding:1.5rem;text-align:center;transition:all 0.3s ease;">
+              <div class="member-avatar" style="width:80px;height:80px;border-radius:50%;background:var(--sea);margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;">
+                👤
+              </div>
+              <h4 style="color:var(--navy);margin-bottom:0.5rem;">Ririn Joy Stella Sianturi</h4>
+              <p style="color:var(--muted);font-size:0.9rem;margin-bottom:0.5rem;">Mahasiswa Sistem Informasi Kelautan</p>
+              <div style="background:white;border-radius:6px;padding:0.5rem;font-size:0.8rem;">
+                <strong>NIM:</strong> 2408099
+              </div>
+            </div>
+          </div>
+          
+          <div style="background:linear-gradient(135deg,var(--navy),var(--sea));color:white;border-radius:12px;padding:1.5rem;margin-bottom:2rem;">
+            <h3 style="margin-bottom:1rem;">🎯 Tujuan Pengembangan</h3>
+            <p style="line-height:1.6;margin-bottom:1rem;">
+              Sebagai bagian dari tugas akhir mata kuliah Sistem Informasi Kelautan, kami mengembangkan SI-GELORA 
+              untuk memberikan solusi teknologi yang dapat membantu masyarakat pesisir dan stakeholder perikanan 
+              dalam mengambil keputusan berbasis data.
+            </p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;">
+              <div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:1rem;">
+                <strong>📚 Akademis:</strong> Menerapkan ilmu yang dipelajari
+              </div>
+              <div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:1rem;">
+                <strong>🌊 Praktis:</strong> Solusi nyata untuk masyarakat
+              </div>
+              <div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:1rem;">
+                <strong>🚀 Inovatif:</strong> Mengintegrasikan teknologi terkini
+              </div>
+            </div>
+          </div>
+          
+          <h3 style="color:var(--navy);margin-bottom:1rem">🔧 Teknologi yang Digunakan</h3>
+          <div class="grid-4" style="margin-bottom:2rem">
+            <div style="text-align:center;padding:1rem">
+              <div style="font-size:2rem;margin-bottom:0.5rem">🛰️</div>
+              <h4 style="color:var(--navy);margin-bottom:0.5rem">Satelit</h4>
+              <p style="font-size:0.8rem;color:var(--muted)">Data citra satelit untuk monitoring suhu dan klorofil-a</p>
+            </div>
+            <div style="text-align:center;padding:1rem">
+              <div style="font-size:2rem;margin-bottom:0.5rem">📡</div>
+              <h4 style="color:var(--navy);margin-bottom:0.5rem">Sensor In-Situ</h4>
+              <p style="font-size:0.8rem;color:var(--muted)">Pengukuran langsung parameter oseanografi</p>
+            </div>
+            <div style="text-align:center;padding:1rem">
+              <div style="font-size:2rem;margin-bottom:0.5rem">🤖</div>
+              <h4 style="color:var(--navy);margin-bottom:0.5rem">Machine Learning</h4>
+              <p style="font-size:0.8rem;color:var(--muted)">Prediksi dan analisis pola oseanografi</p>
+            </div>
+            <div style="text-align:center;padding:1rem">
+              <div style="font-size:2rem;margin-bottom:0.5rem">📱</div>
+              <h4 style="color:var(--navy);margin-bottom:0.5rem">Mobile Friendly</h4>
+              <p style="font-size:0.8rem;color:var(--muted)">Akses mudah melalui berbagai perangkat</p>
+            </div>
+          </div>
+          
+          <h3 style="color:var(--navy);margin-bottom:1rem">📈 Sumber Data</h3>
+          <div style="background:var(--light);border-radius:12px;padding:1.5rem;">
+            <div style="display:grid;gap:1rem">
+              <div style="display:flex;align-items:center;gap:1rem">
+                <div style="font-size:1.5rem">🏛️</div>
+                <div>
+                  <strong>BMKG</strong> - Badan Meteorologi, Klimatologi, dan Geofisika
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:1rem">
+                <div style="font-size:1.5rem">🐟</div>
+                <div>
+                  <strong>FISHBASE</strong> - Global Species Database Of Fish Species
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:1rem">
+                <div style="font-size:1.5rem">🔬</div>
+                <div>
+                  <strong>NASA</strong> - National Aeronautics and Space Administration
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:1rem">
+                <div style="font-size:1.5rem">🌊</div>
+                <div>
+                  <strong>COPERNICUS</strong> - Komponen Observasi Bumi Dari Program Antariksa Uni Eropa
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Feedback Section -->
+    <section id="feedback" class="content-section">
+      <div class="grid-1-2">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">💬 Kirim Kritik & Saran</h2>
+            <p class="card-subtitle">Masukan Anda sangat berharga untuk pengembangan sistem</p>
+          </div>
+          <div class="card-content">
+            <form id="feedbackForm" style="display:flex;flex-direction:column;gap:1rem">
+              <div class="form-group">
+                <label class="form-label">👤 Nama Lengkap</label>
+                <input type="text" class="form-input" placeholder="Masukkan nama lengkap Anda" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">📧 Email</label>
+                <input type="email" class="form-input" placeholder="email@example.com" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">📋 Jenis Masukan</label>
+                <select class="form-input" required>
+                  <option value="">Pilih jenis masukan</option>
+                  <option value="kritik">Kritik</option>
+                  <option value="saran">Saran</option>
+                  <option value="pertanyaan">Pertanyaan</option>
+                  <option value="laporan">Laporan Masalah</option>
+                  <option value="lainnya">Lainnya</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">💬 Pesan</label>
+                <textarea class="form-input form-textarea" placeholder="Tuliskan kritik, saran, atau pertanyaan Anda..." required></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary">
+                📤 Kirim Masukan
+              </button>
+            </form>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:1.5rem">
+            <div class="card-header">
+              <h3 class="card-title">📞 Kontak Kami</h3>
+            </div>
+            <div class="card-content">
+              <div style="display:grid;gap:1rem">
+                <div style="display:flex;align-items:center;gap:1rem">
+                  <div style="font-size:1.5rem">📧</div>
+                  <div>
+                    <strong>Email</strong><br>
+                    <span style="color:var(--muted)">info.si-gelora@kkp.go.id</span>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:1rem">
+                  <div style="font-size:1.5rem">📱</div>
+                  <div>
+                    <strong>WhatsApp</strong><br>
+                    <span style="color:var(--muted)">+62 812-3456-7890</span>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:1rem">
+                  <div style="font-size:1.5rem">🏢</div>
+                  <div>
+                    <strong>Universitas</strong><br>
+                    <span style="color:var(--muted)">UPI Serang</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <p>© 2025 SI-GELORA — Sistem Informasi Gelombang, Laut, Oseanografi, dan Rantai Perikanan</p>
+      <p style="margin-top:0.5rem;opacity:0.8">Supported by Mahasiswa Sistem Informasi Kelautan UPI Serang</p>
+    </div>
+  </footer>
+
+  <script>
+    // Data AOI dari file JSON
+    const aoiData = {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "id": 0,
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [106.67296557423541, -3.1238419341792563],
+                [106.60513528284189, -3.1408085019900622],
+                [106.53730068133369, -3.1577717678511967],
+                [106.46946184762835, -3.1747316596918598],
+                [106.40161885968205, -3.191688105453117],
+                [106.33377179548926, -3.208641033088754],
+                [106.26592073308262, -3.2255903705661377],
+                [106.19806575053263, -3.2425360458668964],
+                [106.13020692594729, -3.2594779869878638],
+                [106.0880884866156, -3.3211978110341684],
+                [106.04596547868685, -3.3829174849777259],
+                [106.00960482089798, -3.4571584355663836],
+                [105.97323978242576, -3.5313995385526153],
+                [105.93687019489694, -3.6056407010846425],
+                [105.90049588985987, -3.6798818302907805],
+                [105.93123480486767, -3.7212884887576085],
+                [105.9619768055194, -3.7626933092016914],
+                [105.99272193107529, -3.8040962552234157],
+                [106.02347022079964, -3.8454972904189204],
+                [105.99953619983359, -3.8888904340546513],
+                [105.97560012475343, -3.9322834862393687],
+                [105.95166195850597, -3.9756764235950697],
+                [105.92772166402698, -4.0190692227401517],
+                [105.8971312222297, -4.1251086725293016],
+                [105.86653546228787, -4.2311484387431761],
+                [105.8627950646253, -4.3198118453498902],
+                [105.90503698520492, -4.3216899171129901],
+                [105.94727862209318, -4.3235655885919293],
+                [105.9531602396074, -4.4199242935197223],
+                [105.95904604518422, -4.5162823756235655],
+                [105.93617614530224, -4.6512246872705596],
+                [105.91330254589484, -4.7861675075140395],
+                [105.92611238607037, -4.8818220760457578],
+                [105.93892837493566, -4.9774754404089405],
+                [105.92056419975199, -5.0379416728910291],
+                [105.9021975532125, -5.0984078983785155],
+                [105.88148796841863, -5.2452210429187822],
+                [105.86077433653186, -5.3920344518335348],
+                [105.87199441765105, -5.4576393837367068],
+                [105.84617732590846, -5.6058043670461384],
+                [105.83326597221368, -5.6798868984948978],
+                [105.82035266054773, -5.7539694380347566],
+                [105.81650678432307, -5.8853353082614976],
+                [105.78676999068003, -5.9076083439279348],
+                [105.75703072711114, -5.9298800871624788],
+                [105.71567240674165, -5.9440818432495117],
+                [105.70200011166743, -5.9062061239338322],
+                [105.68832993929084, -5.8683297967863597],
+                [105.64291168635218, -5.8602998128297159],
+                [105.58941645983752, -5.8472219870395525],
+                [105.5727172194738, -5.7982292616587321],
+                [105.55602122743859, -5.7492356753106559],
+                [105.52320756459179, -5.7224877229537592],
+                [105.49039689406555, -5.6957375900679041],
+                [105.44800391011951, -5.6664664484016258],
+                [105.40561506752384, -5.6371918373148997],
+                [105.38240100155002, -5.6167439095662388],
+                [105.35918854016786, -5.596294935093221],
+                [105.33597767827813, -5.5758449240754233],
+                [105.31276841078082, -5.5553938866920056],
+                [105.28656845898736, -5.6039141237157999],
+                [105.26036432605076, -5.6524333296373683],
+                [105.25790379626977, -5.7447995763836541],
+                [105.30103206999146, -5.7577135775677659],
+                [105.34416213606768, -5.7706242088796591],
+                [105.36032571119691, -5.8024464294647782],
+                [105.37649118076857, -5.8342680401386167],
+                [105.33159647320439, -5.8499597743904221],
+                [105.28669908480634, -5.8656480507794981],
+                [105.24733989633174, -5.8596034952738831],
+                [105.20798144115751, -5.8535561385457227],
+                [105.15146659248394, -5.8394263897743413],
+                [105.11614633334929, -5.8313502916421589],
+                [105.0808270428379, -5.8232719557216104],
+                [105.04399608233092, -5.8273182919536168],
+                [105.00716457667856, -5.8313622242067824],
+                [104.97335948945184, -5.8427304926116586],
+                [104.93955304688004, -5.8540967168095781],
+                [104.90574525688668, -5.8654608848465433],
+                [104.87193612739954, -5.8768229847712696],
+                [104.84136334514967, -5.8945908792052411],
+                [104.81078864803014, -5.9123570323005561],
+                [104.7802120359584, -5.9301214287551174],
+                [104.74963350885572, -5.9478840532674644],
+                [104.71345786818513, -5.9530404742371097],
+                [104.67728166462149, -5.9581944899083537],
+                [104.63465067795644, -5.9552575298366595],
+                [104.5920203449098, -5.952317302106036],
+                [104.62340175949731, -5.9926803044832067],
+                [104.65478771205244, -6.0330417402107157],
+                [104.68617824044965, -6.0734015723160573],
+                [104.71757338257351, -6.1137597638188623],
+                [104.74897317631854, -6.1541162777309157],
+                [104.78037765958933, -6.1944710770561855],
+                [104.81178687030038, -6.2348241247906966],
+                [104.84320084637616, -6.2751753839225506],
+                [104.87461962575105, -6.3155248174319567],
+                [104.90604324636931, -6.3558723882911003],
+                [104.93747174618503, -6.3962180594641831],
+                [104.96890516316215, -6.4365617939073685],
+                [105.00034353527444, -6.4769035545688185],
+                [105.0317869005054, -6.5172433043885718],
+                [105.06323529684826, -6.5575810062985571],
+                [105.09468876230599, -6.5979166232226332],
+                [105.1231390166959, -6.5701005118339566],
+                [105.1515861092284, -6.542282812315511],
+                [105.20202133592198, -6.5280367848011949],
+                [105.22982560245916, -6.5234976930468571],
+                [105.24534053731799, -6.5137892961492891],
+                [105.27832480266264, -6.52411999302051],
+                [105.267348228675, -6.555169333360066],
+                [105.27319175777647, -6.5978507792323127],
+                [105.25704583797982, -6.6418374088358361],
+                [105.21889435269605, -6.6644915247138519],
+                [105.19302875521903, -6.6845511703689438],
+                [105.20350777719105, -6.7464525059733207],
+                [105.22710308961908, -6.7352665257301583],
+                [105.24324218134612, -6.7187023731112072],
+                [105.269324944679, -6.7178609084453216],
+                [105.29954064592576, -6.7054261255063565],
+                [105.30863474884576, -6.6830694604136598],
+                [105.31814377200237, -6.6634110589677995],
+                [105.34197983058365, -6.650944798072695],
+                [105.36607898397968, -6.6376825477547543],
+                [105.37691398987725, -6.6457704284205121],
+                [105.38355651679269, -6.6705996500787164],
+                [105.39515673334097, -6.6817659160154959],
+                [105.40262944135482, -6.7074219020203714],
+                [105.40802631499589, -6.7252152814299286],
+                [105.39768494066011, -6.736399188713337],
+                [105.41259695095388, -6.7446648747664675],
+                [105.43909997363279, -6.7500224610313166],
+                [105.44826655807651, -6.8125130182832372],
+                [105.47063185857319, -6.8170446335557822],
+                [105.47641283334912, -6.8004830487286112],
+                [105.49461662677324, -6.7851505975636437],
+                [105.50121645081525, -6.7607238993811691],
+                [105.50575759929568, -6.7478883942689114],
+                [105.49332616247793, -6.7375536755786491],
+                [105.5185561260725, -6.7135215339585512],
+                [105.54751265225468, -6.6923813930057774],
+                [105.56322075395727, -6.6720828231017775],
+                [105.5627902715249, -6.6575969972384135],
+                [105.58389054264748, -6.6480529704660771],
+                [105.59402045667368, -6.6383144329632895],
+                [105.61207271064946, -6.5917296161619028],
+                [105.61009708910694, -6.5626301971644185],
+                [105.61329492090523, -6.5335244407051345],
+                [105.63523160384533, -6.4946948760645888],
+                [105.65610089183633, -6.4728872706774725],
+                [105.67511827417387, -6.4600317857204601],
+                [105.70699418843009, -6.470749570379807],
+                [105.73618340605135, -6.4827107641631558],
+                [105.76537384146728, -6.4946701171137065],
+                [105.79260137433538, -6.4412378777655812],
+                [105.8012068085887, -6.3878340886970912],
+                [105.82055468577474, -6.3269635897779315],
+                [105.82215387281364, -6.2917814084047778],
+                [105.81964423639974, -6.2739885564333946],
+                [105.80684881941828, -6.2577636087271689],
+                [105.81841628565408, -6.2157110478921975],
+                [105.84289003708228, -6.1639378542285241],
+                [105.85703681380026, -6.1212342139414675],
+                [105.87314804893204, -6.095987680841529],
+                [105.87439523037429, -6.0681783486735297],
+                [105.9118261670981, -6.0454829516542707],
+                [105.94284779900477, -6.0089060421810458],
+                [105.97382395579342, -5.9927109634926294],
+                [105.99319620121517, -5.9612225362732261],
+                [105.98572478338136, -5.9438536123243768],
+                [105.9823799217358, -5.9223385378541131],
+                [105.98587745518807, -5.9134342161207201],
+                [106.01422984077064, -5.8784635053839756],
+                [106.06263897119966, -5.8660871437854816],
+                [106.09885383652448, -5.8931762399167908],
+                [106.11893105039282, -5.9222350089700972],
+                [106.11966704497262, -5.9668515005778104],
+                [106.12619304286336, -5.9998165734351208],
+                [106.17724135057098, -6.0107017731472467],
+                [106.22692232644151, -5.9873144668835279],
+                [106.23073677394122, -5.9601482449406156],
+                [106.25459963078843, -5.945869096608849],
+                [106.29142927975653, -5.954189972203439],
+                [106.3347268580449, -5.9663720259450379],
+                [106.34368949953574, -5.9340210367320037],
+                [106.38829981993239, -5.9381287948914974],
+                [106.41123606722853, -5.9680627940144344],
+                [106.43417496238564, -5.9979952171989037],
+                [106.47365104474049, -6.0199891699527832],
+                [106.51137449559536, -5.9772676239541136],
+                [106.54609857028021, -5.9913769043461649],
+                [106.58082395667964, -6.0054835173231202],
+                [106.62008976562468, -5.9548605154215197],
+                [106.65642051821879, -5.9792170116413672],
+                [106.69275412118375, -6.0035701930414627],
+                [106.73068463525061, -6.0334389750484787],
+                [106.76861901719192, -6.0633038913869646],
+                [106.81830267801338, -6.0694522469343095],
+                [106.86798612519016, -6.0755956997550742],
+                [106.91046100908594, -6.0494081061143543],
+                [106.95293115214288, -6.0232184526997763],
+                [106.99056228782371, -5.9678502528374899],
+                [106.96844565208472, -5.9537270819719286],
+                [106.97142414249718, -5.9047959154495091],
+                [107.02180300460006, -5.8904126788373814],
+                [107.05808860490201, -5.9013258634361696],
+                [107.09437487783219, -5.9122361803927985],
+                [107.12757966103896, -5.9413016487653474],
+                [107.16078776385405, -5.970363845047352],
+                [107.21274320764051, -5.9575345184190915],
+                [107.24633000246043, -5.9548110312953071],
+                [107.27991570180059, -5.9520856204874297],
+                [107.31350029419131, -5.949358288911955],
+                [107.34708376816529, -5.9466290394884034],
+                [107.3757286084129, -5.9828558737147564],
+                [107.40437757864761, -6.0190796707025349],
+                [107.43303070630219, -6.055300402916151],
+                [107.46168801881053, -6.0915180428165092],
+                [107.50016998205662, -6.1246580149229857],
+                [107.5386564075712, -6.1577932500378116],
+                [107.58556955621884, -6.1595869635045375],
+                [107.63248129658577, -6.1613764116409646],
+                [107.65027525363257, -6.1900586763514882],
+                [107.66807154000679, -6.2187394952671253],
+                [107.69622245802491, -6.2004264130619955],
+                [107.73563197838088, -6.2143562044246616],
+                [107.77687446957152, -6.1929440377928575],
+                [107.81811258325712, -6.1715301312040243],
+                [107.85693870067706, -6.1713230762526683],
+                [107.89576348130484, -6.1711131975764406],
+                [107.87652264463954, -6.1235630842712432],
+                [107.85728686665966, -6.0760106093267776],
+                [107.83805610910572, -6.0284557895739574],
+                [107.81883033373796, -5.9808986418364691],
+                [107.7996095023363, -5.9333391829307898],
+                [107.78039357670012, -5.8857774296661809],
+                [107.76118251864811, -5.838213398844859],
+                [107.74197629001812, -5.7906471072619885],
+                [107.72277485266697, -5.7430785717057047],
+                [107.70357816847037, -5.6955078089572675],
+                [107.6843861993227, -5.6479348357910037],
+                [107.66519890713681, -5.6003596689744626],
+                [107.64601625384401, -5.5527823252684376],
+                [107.62683820139374, -5.5052028214269608],
+                [107.60766471175354, -5.4576211741974685],
+                [107.58849574690885, -5.4100374003207987],
+                [107.56933126886284, -5.3624515165312072],
+                [107.55017123963624, -5.3148635395565105],
+                [107.53101562126723, -5.2672734861181079],
+                [107.51186437581127, -5.2196813729309692],
+                [107.49271746534092, -5.172087216703825],
+                [107.47357485194568, -5.1244910341390764],
+                [107.4544364977319, -5.0768928419329749],
+                [107.43530236482252, -5.029292656775624],
+                [107.41617241535698, -4.9816904953509855],
+                [107.39704661149109, -4.9340863743370384],
+                [107.37792491539678, -4.8864803104057781],
+                [107.35880728926202, -4.8388723202232304],
+                [107.33969369529066, -4.7912624204495957],
+                [107.32058409570223, -4.74365062773927],
+                [107.30147845273184, -4.696036958740831],
+                [107.28237672862996, -4.6484214300972297],
+                [107.26327888566232, -4.6008040584456964],
+                [107.24418488610974, -4.5531848604179217],
+                [107.22509469226792, -4.5055638526400585],
+                [107.20600826644738, -4.4579410517327291],
+                [107.18692557097326, -4.410316474311176],
+                [107.1678465681851, -4.3626901369852709],
+                [107.14877122043681, -4.315062056359519],
+                [107.12969949009644, -4.2674322490332148],
+                [107.11063133954598, -4.2198007316004418],
+                [107.0915667311813, -4.1721675206500839],
+                [107.07250562741196, -4.1245326327659759],
+                [107.05344799066103, -4.0768960845269095],
+                [107.03439378336495, -4.0292578925066431],
+                [107.01534296797338, -3.9816180732740603],
+                [106.99629550694905, -3.9339766433931027],
+                [106.9772513627676, -3.8863336194229379],
+                [106.95821049791739, -3.8386890179179645],
+                [106.93917287489943, -3.7910428554278131],
+                [106.92013845622712, -3.7433951484975059],
+                [106.90110720442617, -3.6957459136674551],
+                [106.88207908203444, -3.648095167473473],
+                [106.86305405160172, -3.600442926446926],
+                [106.84403207568968, -3.5527892071147318],
+                [106.8250131168716, -3.5051340259993724],
+                [106.80599713773232, -3.4574773996190422],
+                [106.78698410086804, -3.4098193444876568],
+                [106.76797396888611, -3.3621598771148538],
+                [106.74896670440499, -3.3144990140061643],
+                [106.72996227005402, -3.2668367716629336],
+                [106.71096062847325, -3.2191731665824928],
+                [106.69196174231334, -3.1715082152581631],
+                [106.67296557423541, -3.1238419341792563]
+              ]
+            ]
+          },
+          "properties": {
+            "FID": 0,
+            "Shape_Leng": 1558865.3841899999,
+            "Shape_Area": 56235855396.199997
+          }
+        }
+      ]
+    };
+
+    // Data ikan berdasarkan pulau dan periode dari JSON
+    const fishDatabase = {
+      sangiang: {
+        name: 'Pulau Sangiang',
+        coords: [-5.9531111, 105.8495556],
+        description: 'Pulau di Selat Sunda dengan ekosistem terumbu karang yang kaya',
+        peralihan1: {
+          'Bristletooth SurgeonFish': {
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              id: 1,
+              geometry: {
+                type: "Point",
+                coordinates: [106.29166971878897, -5.7083371810046515]
+              },
+              properties: {
+                OBJECTID: 1,
+                Id: 1,
+                gridcode: 0,
+                ORIG_FID: 1
+              }
+            }],
+            scientificName: 'Acanthurus lineatus',
+            family: 'Acanthuridae',
+            icon: '🐠',
+            iconClass: 'fish-icon-bristletooth',
+            temperature: { min: 25, max: 30 },
+            chlorophyll: { min: 0.1, max: 0.6 },
+            salinity: { min: 34, max: 35 }
+          },
+          'Rabbitfish': {
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              id: 1,
+              geometry: {
+                type: "Point",
+                coordinates: [106.54166973292075, -5.3750038288289943]
+              },
+              properties: {
+                OBJECTID: 1,
+                Id: 2,
+                gridcode: 1,
+                ORIG_FID: 2
+              }
+            }],
+            scientificName: 'Siganus vulpinus',
+            family: 'Siganidae',
+            icon: '🐟',
+            iconClass: 'fish-icon-rabbitfish',
+            temperature: { min: 25, max: 29 },
+            chlorophyll: { min: 0.2, max: 0.8 },
+            salinity: { min: 30, max: 34 }
+          },
+          'SurgeonFish': {
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              id: 1,
+              geometry: {
+                type: "Point",
+                coordinates: [105.07675736941172, -6.0723722893018248]
+              },
+              properties: {
+                OBJECTID: 1,
+                Id: 2,
+                gridcode: 1,
+                ORIG_FID: 2
+              }
+            }],
+            scientificName: 'Acanthurus sp.',
+            family: 'Acanthuridae',
+            icon: '🐠',
+            iconClass: 'fish-icon-surgeonfish',
+            temperature: { min: 26, max: 30 },
+            chlorophyll: { min: 0.5, max: 0.7 },
+            salinity: { min: 33, max: 35 }
+          }
+        },
+        upwelling: {},
+        peralihan2: {
+          'Bristletooth SurgeonFish': {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                id: 1,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.70833635248152, -6.0833372022023013]
+                },
+                properties: {
+                  OBJECTID: 1,
+                  Id: 2,
+                  gridcode: 1,
+                  ORIG_FID: 2
+                }
+              },
+              {
+                type: "Feature",
+                id: 2,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.29166966226177, -6.6250038994878651]
+                },
+                properties: {
+                  OBJECTID: 2,
+                  Id: 5,
+                  gridcode: 1,
+                  ORIG_FID: 5
+                }
+              },
+              {
+                type: "Feature",
+                id: 3,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.20150572273889, -6.1905776454228771]
+                },
+                properties: {
+                  OBJECTID: 3,
+                  Id: 6,
+                  gridcode: 1,
+                  ORIG_FID: 6
+                }
+              }
+            ],
+            scientificName: 'Acanthurus lineatus',
+            family: 'Acanthuridae',
+            icon: '🐠',
+            iconClass: 'fish-icon-bristletooth',
+            temperature: { min: 25, max: 30 },
+            chlorophyll: { min: 0.1, max: 0.6 },
+            salinity: { min: 34, max: 35 },
+            notes: 'Klorofil-a tidak terdeteksi akibat tutupan awan dan gangguan sinyal satelit'
+          },
+          'RabbitFish': {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                id: 1,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.37500300030575, -5.7083371810046515]
+                },
+                properties: {
+                  OBJECTID: 1,
+                  Id: 1,
+                  gridcode: 1,
+                  ORIG_FID: 1
+                }
+              },
+              {
+                type: "Feature",
+                id: 2,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.45833633834974, -5.8611149674185299]
+                },
+                properties: {
+                  OBJECTID: 2,
+                  Id: 2,
+                  gridcode: 1,
+                  ORIG_FID: 2
+                }
+              }
+            ],
+            scientificName: 'Siganus vulpinus',
+            family: 'Siganidae',
+            icon: '🐟',
+            iconClass: 'fish-icon-rabbitfish',
+            temperature: { min: 25, max: 29 },
+            chlorophyll: { min: 0.2, max: 0.8 },
+            salinity: { min: 30, max: 34 },
+            notes: 'Klorofil-a tidak terdeteksi akibat tutupan awan dan gangguan sinyal satelit'
+          },
+          'SurgeonFish': {
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              id: 1,
+              geometry: {
+                type: "Point",
+                coordinates: [105.1369077487517, -6.1828270037446487]
+              },
+              properties: {
+                OBJECTID: 1,
+                Id: 3,
+                gridcode: 1,
+                ORIG_FID: 3
+              }
+            }],
+            scientificName: 'Acanthurus sp.',
+            family: 'Acanthuridae',
+            icon: '🐠',
+            iconClass: 'fish-icon-surgeonfish',
+            temperature: { min: 26, max: 30 },
+            chlorophyll: { min: 0.5, max: 0.7 },
+            salinity: { min: 33, max: 35 },
+            notes: 'Klorofil-a tidak terdeteksi akibat tutupan awan dan gangguan sinyal satelit'
+          }
+        }
+      },
+      tunda: {
+        name: 'Pulau Tunda',
+        coords: [-5.812, 106.283],
+        description: 'Pulau dengan area perikanan yang produktif di Selat Sunda',
+        peralihan1: {
+          'SurgeonFish': {
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              id: 1,
+              geometry: {
+                type: "Point",
+                coordinates: [105.25000299323989, -5.9583371951364938]
+              },
+              properties: {
+                OBJECTID: 1,
+                Id: 2,
+                gridcode: 1,
+                ORIG_FID: 2
+              }
+            }],
+            scientificName: 'Acanthurus sp.',
+            family: 'Acanthuridae',
+            icon: '🐠',
+            iconClass: 'fish-icon-surgeonfish',
+            temperature: { min: 25, max: 30 },
+            chlorophyll: { min: 0.3, max: 0.7 },
+            salinity: { min: 33, max: 36 }
+          }
+        },
+        upwelling: {},
+        peralihan2: {
+          'Eightband ButterflyFish': {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                id: 1,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.08333631715209, -6.2083372092681657]
+                },
+                properties: {
+                  OBJECTID: 1,
+                  Id: 2,
+                  gridcode: 1,
+                  ORIG_FID: 2
+                }
+              },
+              {
+                type: "Feature",
+                id: 2,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.54166967639372, -6.458337223400008]
+                },
+                properties: {
+                  OBJECTID: 2,
+                  Id: 3,
+                  gridcode: 1,
+                  ORIG_FID: 3
+                }
+              },
+              {
+                type: "Feature",
+                id: 3,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.12500298617402, -6.5416705614439934]
+                },
+                properties: {
+                  OBJECTID: 3,
+                  Id: 4,
+                  gridcode: 1,
+                  ORIG_FID: 4
+                }
+              }
+            ],
+            scientificName: 'Chaetodon octofasciatus',
+            family: 'Chaetodontidae',
+            icon: '🦋',
+            iconClass: 'fish-icon-butterflyfish',
+            temperature: { min: 26, max: 29.5 },
+            chlorophyll: { min: 0.3, max: 0.5 },
+            salinity: { min: 34, max: 36 },
+            notes: 'Klorofil-a tidak terdeteksi akibat tutupan awan dan gangguan sinyal satelit'
+          },
+          'Snapper': {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                id: 1,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.02500298052132, -5.9083371923101708]
+                },
+                properties: {
+                  OBJECTID: 1,
+                  Id: 2,
+                  gridcode: 1,
+                  ORIG_FID: 2
+                }
+              },
+              {
+                type: "Feature",
+                id: 2,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.25000299323989, -5.9583371951364938]
+                },
+                properties: {
+                  OBJECTID: 2,
+                  Id: 3,
+                  gridcode: 1,
+                  ORIG_FID: 3
+                }
+              },
+              {
+                type: "Feature",
+                id: 3,
+                geometry: {
+                  type: "Point",
+                  coordinates: [104.79166963399825, -6.0000038641584297]
+                },
+                properties: {
+                  OBJECTID: 3,
+                  Id: 4,
+                  gridcode: 1,
+                  ORIG_FID: 4
+                }
+              },
+              {
+                type: "Feature",
+                id: 4,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.04924540613405, -6.2386402412842017]
+                },
+                properties: {
+                  OBJECTID: 4,
+                  Id: 5,
+                  gridcode: 1,
+                  ORIG_FID: 5
+                }
+              }
+            ],
+            scientificName: 'Lutjanus sp.',
+            family: 'Lutjanidae',
+            icon: '🐟',
+            iconClass: 'fish-icon-snapper',
+            temperature: { min: 25, max: 29 },
+            chlorophyll: { min: 0.5, max: 1.2 },
+            salinity: { min: 34, max: 36 },
+            notes: 'Klorofil-a tidak terdeteksi akibat tutupan awan dan gangguan sinyal satelit'
+          },
+          'SurgeonFish': {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                id: 1,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.70833635248152, -6.0833372022023013]
+                },
+                properties: {
+                  OBJECTID: 1,
+                  Id: 2,
+                  gridcode: 1,
+                  ORIG_FID: 2
+                }
+              },
+              {
+                type: "Feature",
+                id: 2,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.29166966226177, -6.6250038994878651]
+                },
+                properties: {
+                  OBJECTID: 2,
+                  Id: 5,
+                  gridcode: 1,
+                  ORIG_FID: 5
+                }
+              },
+              {
+                type: "Feature",
+                id: 3,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.20150572273889, -6.1905776454228771]
+                },
+                properties: {
+                  OBJECTID: 3,
+                  Id: 6,
+                  gridcode: 1,
+                  ORIG_FID: 6
+                }
+              }
+            ],
+            scientificName: 'Acanthurus sp.',
+            family: 'Acanthuridae',
+            icon: '🐠',
+            iconClass: 'fish-icon-surgeonfish',
+            temperature: { min: 25, max: 30 },
+            chlorophyll: { min: 0.3, max: 0.7 },
+            salinity: { min: 33, max: 36 },
+            notes: 'Klorofil-a tidak terdeteksi akibat tutupan awan dan gangguan sinyal satelit'
+          }
+        }
+      },
+      panjang: {
+        name: 'Pulau Panjang',
+        coords: [-5.9326, 106.1526],
+        description: 'Pulau Panjang di Banten dengan zona penangkapan ikan',
+        peralihan1: {
+          'DamselFish': {
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              id: 1,
+              geometry: {
+                type: "Point",
+                coordinates: [105.1666696551959, -6.0000038641584297]
+              },
+              properties: {
+                OBJECTID: 1,
+                Id: 2,
+                gridcode: 1,
+                ORIG_FID: 2
+              }
+            }],
+            scientificName: 'Neopomacentrus sp.',
+            family: 'Pomacentridae',
+            icon: '🐠',
+            iconClass: 'fish-icon-damselfish',
+            temperature: { min: 24.5, max: 30 },
+            chlorophyll: { min: 0.2, max: 0.6 },
+            salinity: { min: 33, max: 35 }
+          },
+          'Fusilier': {
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              id: 1,
+              geometry: {
+                type: "Point",
+                coordinates: [105.54166967639372, -6.125003871224294]
+              },
+              properties: {
+                OBJECTID: 1,
+                Id: 2,
+                gridcode: 1,
+                ORIG_FID: 2
+              }
+            }],
+            scientificName: 'Caesio sp.',
+            family: 'Caesionidae',
+            icon: '🐟',
+            iconClass: 'fish-icon-fusilier',
+            temperature: { min: 27, max: 30 },
+            chlorophyll: { min: 0.5, max: 1.0 },
+            salinity: { min: 34, max: 36 }
+          },
+          'Wrasse': {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                id: 1,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.17166965547852, -6.1733372072898192]
+                },
+                properties: {
+                  OBJECTID: 1,
+                  Id: 2,
+                  gridcode: 1,
+                  ORIG_FID: 2
+                }
+              },
+              {
+                type: "Feature",
+                id: 2,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.50000300737162, -6.250003878290272]
+                },
+                properties: {
+                  OBJECTID: 2,
+                  Id: 3,
+                  gridcode: 2,
+                  ORIG_FID: 3
+                }
+              }
+            ],
+            scientificName: 'Thalassoma sp.',
+            family: 'Labridae',
+            icon: '🐠',
+            iconClass: 'fish-icon-wrasse',
+            temperature: { min: 26, max: 29 },
+            chlorophyll: { min: 0.5, max: 0.7 },
+            salinity: { min: 34, max: 36 }
+          }
+        },
+        upwelling: {},
+        peralihan2: {
+          'DamselFish': {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                id: 1,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.70833635248152, -6.0833372022023013]
+                },
+                properties: {
+                  OBJECTID: 1,
+                  Id: 2,
+                  gridcode: 1,
+                  ORIG_FID: 2
+                }
+              },
+              {
+                type: "Feature",
+                id: 2,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.29166966226177, -6.6250038994878651]
+                },
+                properties: {
+                  OBJECTID: 2,
+                  Id: 5,
+                  gridcode: 1,
+                  ORIG_FID: 5
+                }
+              },
+              {
+                type: "Feature",
+                id: 3,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.20150572273889, -6.1905776454228771]
+                },
+                properties: {
+                  OBJECTID: 3,
+                  Id: 6,
+                  gridcode: 1,
+                  ORIG_FID: 6
+                }
+              }
+            ],
+            scientificName: 'Neopomacentrus sp.',
+            family: 'Pomacentridae',
+            icon: '🐠',
+            iconClass: 'fish-icon-damselfish',
+            temperature: { min: 24.5, max: 30 },
+            chlorophyll: { min: 0.2, max: 0.6 },
+            salinity: { min: 33, max: 35 },
+            notes: 'Klorofil-a tidak terdeteksi akibat tutupan awan dan gangguan sinyal satelit'
+          },
+          'Fusilier': {
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              id: 1,
+              geometry: {
+                type: "Point",
+                coordinates: [105.1369077487517, -6.1828270037446487]
+              },
+              properties: {
+                OBJECTID: 1,
+                Id: 3,
+                gridcode: 1,
+                ORIG_FID: 3
+              }
+            }],
+            scientificName: 'Caesio sp.',
+            family: 'Caesionidae',
+            icon: '🐟',
+            iconClass: 'fish-icon-fusilier',
+            temperature: { min: 27, max: 30 },
+            chlorophyll: { min: 0.5, max: 1.0 },
+            salinity: { min: 34, max: 36 },
+            notes: 'Klorofil-a tidak terdeteksi akibat tutupan awan dan gangguan sinyal satelit'
+          },
+          'Wrasse': {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                id: 1,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.02500298052132, -5.9083371923101708]
+                },
+                properties: {
+                  OBJECTID: 1,
+                  Id: 2,
+                  gridcode: 1,
+                  ORIG_FID: 2
+                }
+              },
+              {
+                type: "Feature",
+                id: 2,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.25000299323989, -5.9583371951364938]
+                },
+                properties: {
+                  OBJECTID: 2,
+                  Id: 3,
+                  gridcode: 1,
+                  ORIG_FID: 3
+                }
+              },
+              {
+                type: "Feature",
+                id: 3,
+                geometry: {
+                  type: "Point",
+                  coordinates: [104.79166963399825, -6.0000038641584297]
+                },
+                properties: {
+                  OBJECTID: 3,
+                  Id: 4,
+                  gridcode: 1,
+                  ORIG_FID: 4
+                }
+              },
+              {
+                type: "Feature",
+                id: 4,
+                geometry: {
+                  type: "Point",
+                  coordinates: [105.04924540613405, -6.2386402412842017]
+                },
+                properties: {
+                  OBJECTID: 4,
+                  Id: 5,
+                  gridcode: 1,
+                  ORIG_FID: 5
+                }
+              }
+            ],
+            scientificName: 'Thalassoma sp.',
+            family: 'Labridae',
+            icon: '🐠',
+            iconClass: 'fish-icon-wrasse',
+            temperature: { min: 26, max: 29 },
+            chlorophyll: { min: 0.5, max: 0.7 },
+            salinity: { min: 34, max: 36 },
+            notes: 'Klorofil-a tidak terdeteksi akibat tutupan awan dan gangguan sinyal satelit'
+          }
+        }
+      }
+    };
+
+    // AOI Selat Sunda boundaries
+    const aoiBounds = {
+      north: -5.5,
+      south: -6.5,
+      east: 106.5,
+      west: 105.0
+    };
+
+    // Global variables
+    let currentIsland = 'sangiang';
+    let currentPeriod = 'peralihan1';
+    let map;
+    let islandMarkers = [];
+    let fishMarkers = [];
+    let currentZoom = 10;
+    let aoiLayer = null;
+    let fishVisible = false;
+
+    // Initialize map
+    function initMap() {
+      map = L.map('map', {
+        center: [-6.0, 105.75],
+        zoom: 10,
+        minZoom: 8,
+        maxZoom: 18
+      });
+
+      // Basemap Imagery
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye'
+      }).addTo(map);
+
+      // Add AOI boundary from JSON data
+      addAOIFromJSON();
+      
+      // Add island markers
+      addIslandMarkers();
+      
+      // Handle zoom events for marker visibility
+      map.on('zoomend', function() {
+        currentZoom = map.getZoom();
+        updateMarkerVisibility();
+      });
+      
+      // Initialize marker visibility
+      updateMarkerVisibility();
+      
+      // Update fish display
+      updateFishDisplay();
+    }
+
+    function addAOIFromJSON() {
+      // Extract coordinates from AOI JSON data
+      const coordinates = aoiData.features[0].geometry.coordinates[0];
+      
+      // Convert to Leaflet format (reverse lat/lng order)
+      const leafletCoords = coordinates.map(coord => [coord[1], coord[0]]);
+      
+      // Create polygon layer
+      aoiLayer = L.polygon(leafletCoords, {
+        color: '#0b3d91',
+        weight: 2,
+        opacity: 0.8,
+        fillColor: '#2f86c6',
+        fillOpacity: 0.1
+      }).addTo(map);
+      
+      // Add popup with AOI information
+      const popupContent = `
+        <div style="min-width: 250px;">
+          <h4 style="margin: 0 0 8px 0; color: #0b3d91;">Area of Interest (AOI)</h4>
+          <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280;">
+            Seluruh wilayah Selat Sunda
+          </p>
+          <div style="background: #f6fbff; border-radius: 6px; padding: 8px; margin-bottom: 8px;">
+            <strong>Luas Area:</strong> ${aoiData.features[0].properties.Shape_Area.toLocaleString()} m²<br>
+            <strong>Keliling:</strong> ${aoiData.features[0].properties.Shape_Leng.toLocaleString()} m
+          </div>
+          <p style="margin: 0; font-size: 11px; color: #6b7280;">
+            AOI untuk monitoring zona penangkapan ikan di Selat Sunda
+          </p>
+        </div>
+      `;
+      
+      aoiLayer.bindPopup(popupContent, {
+        maxWidth: 300,
+        className: 'aoi-popup'
+      });
+    }
+
+    function updateMarkerVisibility() {
+      const showMarkers = currentZoom < 13;
+      islandMarkers.forEach(marker => {
+        if (showMarkers) {
+          if (!map.hasLayer(marker)) {
+            marker.addTo(map);
+          }
+        } else {
+          if (map.hasLayer(marker)) {
+            map.removeLayer(marker);
+          }
+        }
+      });
+    }
+
+    function addIslandMarkers() {
+      // Clear existing markers
+      islandMarkers.forEach(marker => map.removeLayer(marker));
+      islandMarkers = [];
+
+      // Add markers for each island
+      Object.keys(fishDatabase).forEach(islandKey => {
+        const island = fishDatabase[islandKey];
+        const marker = L.marker(island.coords, { 
+          title: island.name,
+          zIndex: 1000
+        });
+        
+        // Create popup content
+        const popupContent = `
+          <div style="min-width: 250px;">
+            <h4 style="margin: 0 0 8px 0; color: #0b3d91;">${island.name}</h4>
+            <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280;">
+              Koordinat: ${island.coords[0].toFixed(5)}, ${island.coords[1].toFixed(5)}
+            </p>
+            <p style="margin: 0 0 12px 0; font-size: 13px; line-height: 1.4;">
+              ${island.description}
+            </p>
+            <button onclick="zoomToIsland('${islandKey}')" class="btn btn-primary" style="width: 100%; margin: 0;">
+              🗺️ Zoom ke Pulau
+            </button>
+          </div>
+        `;
+        
+        marker.bindPopup(popupContent, {
+          maxWidth: 300,
+          className: 'island-popup'
+        });
+        
+        marker.addTo(map);
+        islandMarkers.push(marker);
+      });
+    }
+
+    function selectIsland(island) {
+      currentIsland = island;
+      
+      // Update UI
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      // Update island info
+      const islandData = fishDatabase[island];
+      document.getElementById('islandTitle').textContent = islandData.name;
+      document.getElementById('islandDescription').textContent = islandData.description;
+      document.getElementById('currentIslandName').textContent = islandData.name;
+      
+      // Update fish display
+      updateFishDisplay();
+      
+      // Update fish markers
+      if (fishVisible) {
+        clearFishMarkers();
+        addFishMarkers();
+      }
+    }
+
+    function selectPeriod(period) {
+      currentPeriod = period;
+      
+      // Update UI
+      document.querySelectorAll('.period-tab').forEach(tab => tab.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      // Update period display
+      const periodLabels = {
+        'peralihan1': 'Peralihan I',
+        'upwelling': 'Upwelling',
+        'peralihan2': 'Peralihan II'
+      };
+      document.getElementById('currentPeriod').textContent = periodLabels[period];
+      
+      // Update fish display
+      updateFishDisplay();
+      
+      // Update fish markers
+      if (fishVisible) {
+        clearFishMarkers();
+        addFishMarkers();
+      }
+    }
+
+    function updateFishDisplay() {
+      const islandData = fishDatabase[currentIsland];
+      const fish = islandData[currentPeriod];
+      const fishInfo = document.getElementById('fishInfo');
+      const fishDetails = document.getElementById('fishDetails');
+      const fishCount = document.getElementById('fishCount');
+      
+      // Update legend info
+      if (Object.keys(fish).length === 0) {
+        if (currentPeriod === 'upwelling') {
+          fishInfo.innerHTML = `
+            <div class="alert alert-error">
+              <div class="alert-title">❄️ Tidak ada ikan pada periode Upwelling</div>
+              <div class="alert-text">
+                Pada periode Upwelling, terjadi perubahan kondisi oseanografi yang signifikan di Selat Sunda. 
+                Massa air dingin dari kedalaman naik ke permukaan menyebabkan penurunan suhu laut secara drastis 
+                dan perubahan distribusi nutrien. Kondisi ini tidak sesuai untuk habitat ikan-ikan tropis.
+              </div>
+            </div>
+          `;
+        } else {
+          fishInfo.innerHTML = `<div style="text-align:center;padding:1rem;color:var(--muted)">Tidak ada data ikan untuk periode ini</div>`;
+        }
+        fishDetails.innerHTML = '';
+        fishCount.textContent = '0 jenis';
+      } else {
+        const fishCountValue = Object.keys(fish).length;
+        fishInfo.innerHTML = `
+          <div class="alert alert-success">
+            <div class="alert-title">🐟 Ditemukan ${fishCountValue} jenis ikan</div>
+            <div class="alert-text">Klik detail di bawah untuk informasi lengkap parameter oseanografi</div>
+          </div>
+        `;
+        fishCount.textContent = `${fishCountValue} jenis`;
+        
+        // Update detailed fish cards
+        let detailsHTML = '';
+        if (currentPeriod === 'peralihan2') {
+          detailsHTML += `
+            <div class="alert alert-info">
+              <div class="alert-title">ℹ️ Informasi Peralihan II</div>
+              <div class="alert-text">
+                Nilai klorofil-a pada periode Peralihan II di wilayah Selat Sunda tidak terdeteksi 
+                akibat tutupan awan dan gangguan sinyal satelit. Analisis dilakukan menggunakan 
+                Suhu Permukaan Laut (SST) dan Salinitas.
+              </div>
+            </div>
+          `;
+        }
+        
+        Object.keys(fish).forEach(fishKey => {
+          const fishItem = fish[fishKey];
+          detailsHTML += `
+            <div class="fish-card">
+              <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <div class="${fishItem.iconClass}" style="width: 60px; height: 60px;"></div>
+                <div>
+                  <div class="fish-name">${fishKey}</div>
+                  <div class="fish-scientific">${fishItem.scientificName}</div>
+                  <div class="fish-family">${fishItem.family}</div>
+                </div>
+              </div>
+              <div class="fish-params">
+                <div class="param">
+                  <span class="param-label">🌡️ Suhu:</span>
+                  <span class="param-value">${fishItem.temperature.min}°C - ${fishItem.temperature.max}°C</span>
+                </div>
+                <div class="param">
+                  <span class="param-label">🌱 Klorofil-a:</span>
+                  <span class="param-value">${currentPeriod === 'peralihan2' ? 'Tidak terdeteksi' : fishItem.chlorophyll.min + ' - ' + fishItem.chlorophyll.max + ' mg/m³'}</span>
+                </div>
+                <div class="param">
+                  <span class="param-label">🧂 Salinitas:</span>
+                  <span class="param-value">${fishItem.salinity.min} - ${fishItem.salinity.max} ppt</span>
+                </div>
+              </div>
+              ${fishItem.notes ? `<div style="margin-top:1rem;padding:0.75rem;background:#fef3c7;border-radius:8px;font-size:0.9rem;color:#92400e;"><strong>📝 Catatan:</strong> ${fishItem.notes}</div>` : ''}
+            </div>
+          `;
+        });
+        
+        fishDetails.innerHTML = detailsHTML;
+      }
+    }
+
+    function fishIcon(fishItem) {
+      return L.divIcon({
+        html: `<div class="${fishItem.iconClass}" style="width: 40px; height: 40px;"></div>`,
+        className: 'fish-marker-icon',
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -20]
+      });
+    }
+
+    function addFishMarkers() {
+      const islandData = fishDatabase[currentIsland];
+      const fish = islandData[currentPeriod];
+      
+      if (Object.keys(fish).length === 0) {
+        return;
+      }
+      
+      Object.keys(fish).forEach(fishKey => {
+        const fishItem = fish[fishKey];
+        
+        // Add markers for each feature in the fish data
+        fishItem.features.forEach(feature => {
+          // Convert coordinates to Leaflet format (reverse lat/lng order)
+          const coords = [feature.geometry.coordinates[1], feature.geometry.coordinates[0]];
+          
+          const marker = L.marker(coords, { 
+            icon: fishIcon(fishItem),
+            zIndex: 500
+          });
+          
+          // Create popup content
+          const popupContent = `
+            <div style="min-width: 250px; text-align: center;">
+              <div class="${fishItem.iconClass}" style="width: 80px; height: 80px; margin: 0 auto 10px;"></div>
+              <h4 style="margin: 0 0 8px 0; color: #0b3d91;">${fishKey}</h4>
+              <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280;">
+                ${fishItem.scientificName}
+              </p>
+              <div style="background: #f6fbff; border-radius: 6px; padding: 8px; margin-bottom: 8px;">
+                <strong>Famili:</strong> ${fishItem.family}<br>
+                <strong>Koordinat:</strong> ${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}
+              </div>
+              <p style="margin: 0; font-size: 11px; color: #6b7280;">
+                Lokasi penangkapan ikan ${fishKey}
+              </p>
+            </div>
+          `;
+          
+          marker.bindPopup(popupContent, {
+            maxWidth: 250,
+            className: 'fish-popup'
+          });
+          
+          marker.addTo(map);
+          fishMarkers.push(marker);
+        });
+      });
+    }
+
+    function clearFishMarkers() {
+      fishMarkers.forEach(marker => { 
+        try{ 
+          map.removeLayer(marker); 
+        }catch(e){} 
+      });
+      fishMarkers = [];
+    }
+
+    function zoomToIsland(islandKey) {
+      const islandData = fishDatabase[islandKey];
+      map.setView(islandData.coords, 14);
+      
+      // Update current island if different
+      if (currentIsland !== islandKey) {
+        currentIsland = islandKey;
+        
+        // Update UI
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+        document.querySelector(`.tab[onclick="selectIsland('${islandKey}')"]`).classList.add('active');
+        
+        // Update island info
+        document.getElementById('islandTitle').textContent = islandData.name;
+        document.getElementById('islandDescription').textContent = islandData.description;
+        document.getElementById('currentIslandName').textContent = islandData.name;
+        
+        // Update fish display
+        updateFishDisplay();
+        
+        // Update fish markers
+        if (fishVisible) {
+          clearFishMarkers();
+          addFishMarkers();
+        }
+      }
+    }
+
+    function zoomToAOI() {
+      // Zoom to show entire AOI
+      map.fitBounds(aoiLayer.getBounds());
+    }
+
+    function toggleFishMarkers() {
+      fishVisible = !fishVisible;
+      
+      if (fishVisible) {
+        // Show fish markers
+        addFishMarkers();
+        event.target.textContent = '🗺️ Sembunyikan Lokasi Ikan';
+        event.target.classList.remove('btn-primary');
+        event.target.classList.add('btn-secondary');
+      } else {
+        // Hide fish markers
+        clearFishMarkers();
+        event.target.textContent = '🗺️ Tampilkan Lokasi Ikan';
+        event.target.classList.remove('btn-secondary');
+        event.target.classList.add('btn-primary');
+      }
+    }
+
+    function setActive(feature){
+      // Update navigation
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
+      
+      // Activate selected section
+      if(feature === 'home'){
+        document.querySelector('.nav-btn:nth-child(1)').classList.add('active');
+        document.getElementById('home').classList.add('active');
+      }
+      if(feature === 'zonaTangkapan'){
+        document.querySelector('.nav-btn:nth-child(2)').classList.add('active');
+        document.getElementById('zonaTangkapan').classList.add('active');
+        if (!map) {
+          setTimeout(() => {
+            initMap();
+          }, 100);
+        }
+      }
+      if(feature === 'oseanografi'){
+        document.querySelector('.nav-btn:nth-child(3)').classList.add('active');
+        document.getElementById('oseanografi').classList.add('active');
+        setTimeout(initCharts, 100);
+      }
+      if(feature === 'about'){
+        document.querySelector('.nav-btn:nth-child(4)').classList.add('active');
+        document.getElementById('about').classList.add('active');
+      }
+      if(feature === 'feedback'){
+        document.querySelector('.nav-btn:nth-child(5)').classList.add('active');
+        document.getElementById('feedback').classList.add('active');
+      }
+    }
+
+    // Initialize charts
+    function initCharts() {
+      // Temperature Chart
+      const tempCtx = document.getElementById('tempChart');
+      if (tempCtx) {
+        new Chart(tempCtx, {
+          type: 'line',
+          data: {
+            labels: ['Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober'],
+            datasets: [{
+              label: 'Suhu Permukaan Laut (°C)',
+              data: [30.6, 30.4, 30.0, 29.7, 29.8, 29.7],
+              borderColor: '#0b3d91',
+              backgroundColor: 'rgba(11, 61, 145, 0.1)',
+              tension: 0.4
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top'
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: false,
+                min: 29,
+                max: 31
+              }
+            }
+          }
+        });
+      }
+
+      // Chlorophyll Chart
+      const chlorophyllCtx = document.getElementById('chlorophyllChart');
+      if (chlorophyllCtx) {
+        new Chart(chlorophyllCtx, {
+          type: 'bar',
+          data: {
+            labels: ['Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober'],
+            datasets: [{
+              label: 'Klorofil-a (mg/m³)',
+              data: [1.8, 1.2, 0.9, 1.1, 1.4, 1.8],
+              backgroundColor: '#10b981',
+              borderColor: '#059669',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top'
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 2.0
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // Form submission
+    document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      alert('Terima kasih atas masukan Anda! Pesan telah terkirim dan akan kami proses.');
+      this.reset();
+    });
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      setActive('home');
+    });
+  </script>
+</body>
+</html>
